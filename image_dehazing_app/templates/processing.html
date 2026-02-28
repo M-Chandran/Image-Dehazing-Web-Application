@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Processing - DeHaze AI{% endblock %}
+
+{% block content %}
+<section class="processing-page">
+    <div class="processing-card">
+        <div class="processing-icon">
+            <div class="processing-rings">
+                <div class="processing-ring"></div>
+                <div class="processing-ring"></div>
+                <div class="processing-ring"></div>
+            </div>
+            <div class="processing-icon-inner">
+                <i class="fas fa-brain"></i>
+            </div>
+        </div>
+
+        <h2 class="processing-title" id="status-text">Initializing AI Models...</h2>
+        <p class="processing-subtitle">Your image is being enhanced with our advanced dehazing algorithms</p>
+
+        <div class="processing-progress">
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+            <span class="progress-text" id="progress-text">0%</span>
+        </div>
+
+        <div class="processing-steps">
+            <div class="processing-step" id="step-1">
+                <div class="processing-step-icon">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div class="processing-step-content">
+                    <h5>Upload Complete</h5>
+                    <p>Image successfully uploaded</p>
+                </div>
+            </div>
+
+            <div class="processing-step" id="step-2">
+                <div class="processing-step-icon">
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <div class="processing-step-content">
+                    <h5>Loading AI Models</h5>
+                    <p>Preparing neural networks</p>
+                </div>
+            </div>
+
+            <div class="processing-step" id="step-3">
+                <div class="processing-step-icon">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <div class="processing-step-content">
+                    <h5>Processing Image</h5>
+                    <p>Applying dehazing algorithms</p>
+                </div>
+            </div>
+
+            <div class="processing-step" id="step-4">
+                <div class="processing-step-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="processing-step-content">
+                    <h5>Finalizing Results</h5>
+                    <p>Generating output image</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="processing-actions">
+            <button class="btn btn-secondary" onclick="window.history.back()">
+                <i class="fas fa-arrow-left"></i>
+                Back to Dashboard
+            </button>
+            <button class="btn btn-primary" id="view-results-btn" style="display: none;" onclick="viewResults()">
+                <i class="fas fa-eye"></i>
+                View Results
+            </button>
+        </div>
+    </div>
+</section>
+
+<script>
+const taskId = '{{ task_info.task_id }}';
+const inputImage = '{{ task_info.input_image }}';
+let statusCheckInterval;
+
+function checkTaskStatus() {
+    fetch(`/task_status/${taskId}`)
+        .then(response => response.json())
+        .then(data => {
+            updateProgress(data);
+        })
+        .catch(error => {
+            console.error('Error checking task status:', error);
+            showError('Failed to check processing status');
+        });
+}
+
+function updateProgress(data) {
+    const statusText = document.getElementById('status-text');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+    const viewResultsBtn = document.getElementById('view-results-btn');
+
+    if (data.state === 'PENDING') {
+        statusText.textContent = 'Task is pending...';
+        progressFill.style.width = '10%';
+        progressText.textContent = '10%';
+        updateStep(1);
+    } else if (data.state === 'PROGRESS') {
+        statusText.textContent = data.status || 'Processing...';
+        const progress = data.progress || 0;
+        progressFill.style.width = `${progress}%`;
+        progressText.textContent = `${progress}%`;
+
+        // Update steps based on progress
+        if (progress >= 10 && progress < 30) updateStep(2);
+        else if (progress >= 30 && progress < 90) updateStep(3);
+        else if (progress >= 90) updateStep(4);
+
+    } else if (data.state === 'SUCCESS') {
+        statusText.textContent = 'Processing Complete!';
+        progressFill.style.width = '100%';
+        progressText.textContent = '100%';
+        updateStep(4, true);
+
+        // Clear interval and show results button
+        clearInterval(statusCheckInterval);
+        viewResultsBtn.style.display = 'inline-flex';
+
+        // Store result data for viewing
+        sessionStorage.setItem('dehazing_result', JSON.stringify(data.result));
+
+    } else if (data.state === 'FAILURE') {
+        statusText.textContent = 'Processing Failed';
+        progressFill.style.width = '0%';
+        progressText.textContent = 'Failed';
+        showError(data.status || 'An error occurred during processing');
+        clearInterval(statusCheckInterval);
+    }
+}
+
+function updateStep(stepNumber, completed = false) {
+    // Reset all steps
+    for (let i = 1; i <= 4; i++) {
+        const step = document.getElementById(`step-${i}`);
+        step.classList.remove('active', 'completed');
+    }
+
+    // Set active step
+    const activeStep = document.getElementById(`step-${stepNumber}`);
+    activeStep.classList.add('active');
+
+    // Mark previous steps as completed
+    for (let i = 1; i < stepNumber; i++) {
+        const step = document.getElementById(`step-${i}`);
+        step.classList.add('completed');
+    }
+
+    if (completed) {
+        activeStep.classList.add('completed');
+    }
+}
+
+function viewResults() {
+    const result = JSON.parse(sessionStorage.getItem('dehazing_result'));
+    if (result) {
+        // Redirect to dashboard with results
+        window.location.href = `/dashboard?result=${encodeURIComponent(JSON.stringify(result))}&input=${encodeURIComponent(inputImage)}`;
+    }
+}
+
+function showError(message) {
+    const statusText = document.getElementById('status-text');
+    statusText.textContent = message;
+    statusText.style.color = 'var(--error)';
+}
+
+// Start checking status immediately and then every 2 seconds
+checkTaskStatus();
+statusCheckInterval = setInterval(checkTaskStatus, 2000);
+</script>
+{% endblock %}

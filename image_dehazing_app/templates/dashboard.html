@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - DeHaze AI{% endblock %}
+
+{% block page_title %}Welcome, {{ session.username }}!{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-content">
+        <h1 class="hero-title">Transform Your Images</h1>
+        <p class="hero-subtitle">Upload your hazy images and let our advanced AI technology enhance them to crystal-clear quality in seconds.</p>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-number">99%</span>
+                <span class="hero-stat-label">Accuracy Rate</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-number">4K</span>
+                <span class="hero-stat-label">Resolution Support</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-number"><5s</span>
+                <span class="hero-stat-label">Processing Time</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Main Dashboard -->
+<section class="dashboard-section">
+    <!-- Upload Section -->
+    <div class="upload-card">
+        <h2 class="upload-title">Upload Your Image</h2>
+        <p class="upload-subtitle">Drag and drop or browse to select your hazy image</p>
+
+        <form method="POST" enctype="multipart/form-data" id="upload-form">
+            <div class="file-input-wrapper">
+                <input type="file" id="file" name="file" class="file-input" accept=".png,.jpg,.jpeg" required>
+                <label for="file" class="file-input-label">
+                    <div class="file-input-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <div class="file-input-text">
+                        <h3>Drop your image here</h3>
+                        <p>or <strong>click to browse</strong></p>
+                        <p class="upload-hint">Supports PNG, JPG, JPEG up to 50MB</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class="upload-options">
+                <label class="form-toggle">
+                    <input type="checkbox" name="show_steps" checked>
+                    <span class="toggle-switch"></span>
+                    <span class="toggle-label">Show Processing Steps</span>
+                </label>
+                <label class="form-toggle">
+                    <input type="checkbox" name="high_quality" checked>
+                    <span class="toggle-switch"></span>
+                    <span class="toggle-label">Maximum Quality</span>
+                </label>
+            </div>
+
+            <div style="text-align: center; margin-top: 2rem;">
+                <button type="submit" class="btn btn-primary btn-lg" id="dehaze-btn">
+                    <i class="fas fa-magic"></i>
+                    <span>Start AI Dehazing</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results Section -->
+    {% if input_image %}
+    <section class="results-section">
+        <div class="results-grid">
+            <div class="result-card">
+                <div class="result-card-header original">
+                    <i class="fas fa-image"></i>
+                    <h4>Original Image</h4>
+                </div>
+                <div class="result-card-body">
+                    <img src="{{ url_for('static', filename='uploads/' + input_image) }}" alt="Original Image">
+                </div>
+            </div>
+
+            <div class="comparison-arrow">
+                <i class="fas fa-arrow-right"></i>
+            </div>
+
+            <div class="result-card">
+                <div class="result-card-header dehazed">
+                    <i class="fas fa-sparkles"></i>
+                    <h4>Dehazed Image</h4>
+                </div>
+                <div class="result-card-body">
+                    <img src="{{ url_for('static', filename='outputs/' + output_image) }}" alt="Dehazed Image">
+                </div>
+                <div class="result-card-footer">
+                    <a href="{{ url_for('download', filename=output_image) }}" class="btn btn-primary">
+                        <i class="fas fa-download"></i>
+                        Download Result
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Processing Steps Section -->
+    {% if steps %}
+    <section class="steps-section">
+        <h3 class="steps-title">Processing Steps</h3>
+        <div class="steps-grid">
+            {% for step_key, step_filename in steps.items() %}
+            <div class="step-card">
+                <div class="step-number">{{ loop.index }}</div>
+                <h4 class="step-title">{{ step_key }}</h4>
+                <div class="step-image">
+                    {% if loop.index == 1 %}
+                    <img src="{{ url_for('static', filename='uploads/' + step_filename) }}" alt="Step {{ loop.index }}">
+                    {% else %}
+                    <img src="{{ url_for('static', filename='outputs/' + step_filename) }}" alt="Step {{ loop.index }}">
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</section>
+
+<script>
+    // File Upload Handling
+    const fileInput = document.getElementById('file');
+    const fileInputLabel = document.querySelector('.file-input-label');
+    const fileInputText = fileInputLabel.querySelector('.file-input-text h3');
+
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            const file = e.target.files[0];
+            fileInputText.innerHTML = `Selected: <strong>${file.name}</strong>`;
+            fileInputLabel.style.borderColor = 'var(--primary-teal)';
+        }
+    });
+
+    // Form Submission
+    document.getElementById('upload-form').addEventListener('submit', function(e) {
+        const btn = document.getElementById('dehaze-btn');
+        const originalText = btn.innerHTML;
+        
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Processing...</span>';
+        btn.disabled = true;
+        
+        // Re-enable after 30 seconds as fallback
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 30000);
+    });
+</script>
+{% endblock %}
